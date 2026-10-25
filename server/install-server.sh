@@ -34,7 +34,10 @@ if [ ! -f /etc/caddy/Caddyfile ] || ! grep -q 'conf.d' /etc/caddy/Caddyfile; the
 else
 	echo "Caddyfile уже настроен — не трогаю."
 fi
-[ -f /etc/caddy/conf.d/banking.caddy ] || curl -fsSL "$BASE/conf.d-banking.caddy" -o /etc/caddy/conf.d/banking.caddy || true
+if [ ! -f /etc/caddy/conf.d/banking.caddy ]; then
+	curl -fsSL "$BASE/conf.d-banking.caddy" -o /etc/caddy/conf.d/banking.caddy \
+		|| echo "# заготовка: сюда добавятся проекты" > /etc/caddy/conf.d/00-placeholder.caddy
+fi
 
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
 systemctl reload caddy || systemctl restart caddy
