@@ -39,6 +39,10 @@ if [ ! -f /etc/caddy/conf.d/banking.caddy ]; then
 		|| echo "# заготовка: сюда добавятся проекты" > /etc/caddy/conf.d/00-placeholder.caddy
 fi
 
+# Caddy не должен остаться с пустым conf.d
+ls /etc/caddy/conf.d/*.caddy >/dev/null 2>&1 \
+	|| echo "# заготовка: сюда добавятся проекты" > /etc/caddy/conf.d/00-placeholder.caddy
+
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
 systemctl reload caddy || systemctl restart caddy
 
