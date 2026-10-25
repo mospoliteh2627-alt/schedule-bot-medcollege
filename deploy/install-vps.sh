@@ -56,6 +56,10 @@ if [ -z "$ADMINS" ]; then
   echo "Ваш Telegram id можно узнать позже командой /id в боте и вписать в $APP_DIR/.env"
   ask ADMINS "Ваш Telegram id (можно пустым)" no
 fi
+if [ -z "$TOKEN" ]; then
+  warn "Токен пустой — установка остановлена. Запустите скрипт снова и вставьте токен."
+  exit 1
+fi
 cat > "$APP_DIR/.env" <<ENV
 BOT_TOKEN=$TOKEN
 ADMIN_IDS=$ADMINS
@@ -66,13 +70,13 @@ ENV
 chmod 600 "$APP_DIR/.env"
 
 say "5/6  Проверка токена"
-if ! "$APP_DIR/.venv/bin/python" -m app.main --check; then
+if ! ( cd "$APP_DIR" && .venv/bin/python -m app.main --check ); then
   warn "Telegram не принял токен. Проверьте его и поправьте $APP_DIR/.env, затем:"
   echo "  systemctl restart $SERVICE"
   exit 1
 fi
 
-say "6/6  Служба systemd"
+say "6/6  Служба systemd и бэкапы"
 RUN_USER="${SUDO_USER:-root}"
 [ "$RUN_USER" = "root" ] || id -u "$RUN_USER" >/dev/null 2>&1 || RUN_USER=root
 chown -R "$RUN_USER":"$RUN_USER" "$APP_DIR"
@@ -94,6 +98,13 @@ Environment=PYTHONUNBUFFERED=1
 [Install]
 WantedBy=multi-user.target
 UNIT
+# ежедневный бэкап базы и настроек, хранится 14 дней
+mkdir -p /root/backups
+cat > /etc/cron.d/schedule-bot-backup <<CRON
+0 4 * * * root tar czf /root/backups/schedule-\$(date +\%F).tgz -C $APP_DIR data .env 2>/dev/null; find /root/backups -name 'schedule-*.tgz' -mtime +14 -delete
+CRON
+chmod 644 /etc/cron.d/schedule-bot-backup
+
 systemctl daemon-reload
 systemctl enable --now "$SERVICE"
 sleep 3
@@ -101,13 +112,17 @@ systemctl --no-pager --lines=8 status "$SERVICE" || true
 
 cat <<DONE
 
-Готово. Бот работает 24/7 и перезапускается сам.
+Готово. Бот работает 24/7, сам перезапускается после сбоев и падений сервера.
 
   Логи:        journalctl -u $SERVICE -f
+  Статус:       systemctl status $SERVICE
   Перезапуск:  systemctl restart $SERVICE
   Настройки:   nano $APP_DIR/.env
+  Бэкапы:      /root/backups (каждый день в 04:00, хранится 14 дней)
 
-В Telegram: /start → /id (узнать свой id) → вписать в ADMIN_IDS → systemctl restart $SERVICE
-Дальше: /admin → «Загрузить PDF» → предпросмотр → «Опубликовать».
+Дальше в Telegram:
+  1) /start → /id — узнать свой id (если ещё не вписали)
+  2) sudo nano $APP_DIR/.env → ADMIN_IDS=число → sudo systemctl restart $SERVICE
+  3) /admin → «Загрузить PDF» → проверить предпросмотр → «Опубликовать»
 
 DONE
