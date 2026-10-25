@@ -1,0 +1,19 @@
+# Единая точка входа для всех проектов на сервере.
+# HTTPS-сертификаты Caddy получает и продлевает сам.
+{
+	email admin@guvanch.ru
+}
+
+# каждый проект = отдельный файл в conf.d (их создаёт new-project.sh)
+import /etc/caddy/conf.d/*.caddy
+
+# --- лендинг: статика ---------------------------------------------------
+guvanch.ru, www.guvanch.ru {
+	root * /var/www/guvanch.ru
+	encode zstd gzip
+	header /index.html Cache-Control "no-cache"
+	@assets path /assets/* /css/* /js/* /preview/*
+	header @assets Cache-Control "public, max-age=2592000, immutable"
+	try_files {path} {path}.html {path}/index.html
+	file_server
+}
