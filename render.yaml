@@ -1,0 +1,19 @@
+# Blueprint для Render (бесплатный тариф): New → Blueprint → выбрать репозиторий.
+services:
+  - type: web
+    name: schedule-bot-medcollege
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: BOT_TOKEN
+        sync: false          # вписать в панели Render, в git не попадает
+      - key: ADMIN_IDS
+        sync: false
+      - key: TZ
+        value: Europe/Moscow
+      - key: DIGEST_TIME
+        value: "07:30"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Schedule bot (Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bot
+WorkingDirectory=/home/bot/schedule-bot
+ExecStart=/home/bot/schedule-bot/.venv/bin/python -m app.main
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+# логи — в journalctl -u schedule-bot -f
+
+[Install]
+WantedBy=multi-user.target
