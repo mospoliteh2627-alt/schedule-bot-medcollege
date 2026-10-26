@@ -13,6 +13,7 @@ import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
@@ -94,8 +95,18 @@ async def start_health_server():
     return runner
 
 
+def make_bot(config: Config) -> Bot:
+    """Бот с опциональным прокси: из РФ-локации Telegram иногда недоступен напрямую."""
+    session = AiohttpSession(proxy=config.proxy) if config.proxy else None
+    return Bot(
+        token=config.token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        session=session,
+    )
+
+
 async def check(config: Config) -> int:
-    bot = Bot(token=config.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = make_bot(config)
     try:
         me = await bot.get_me()
         print(f"✅ Токен рабочий: @{me.username} ({me.full_name}), id={me.id}")
@@ -110,13 +121,15 @@ async def check(config: Config) -> int:
 async def run(config: Config) -> None:
     store = Store(config.db_path)
     ctx = Context(store=store, config=config)
-    bot = Bot(token=config.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    bot = make_bot(config)
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(build_admin_router(ctx))
     dp.include_router(build_student_router(ctx))
 
     me = await bot.get_me()
     log.info("бот @%s запущен, БД: %s", me.username, config.db_path)
+    if config.proxy:
+        log.info("трафик к Telegram идёт через прокси")
     if not config.admin_ids:
         log.warning("ADMIN_IDS пуст — загрузка PDF будет недоступна")
 

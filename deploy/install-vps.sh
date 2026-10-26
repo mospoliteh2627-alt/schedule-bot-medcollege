@@ -60,9 +60,15 @@ if [ -z "$TOKEN" ]; then
   warn "Токен пустой — установка остановлена. Запустите скрипт снова и вставьте токен."
   exit 1
 fi
+PROXY="${BOT_PROXY:-}"
+if [ -z "$PROXY" ]; then
+  echo "Прокси нужен только если сервер в РФ и Telegram работает нестабильно (обычно Enter)."
+  ask PROXY "Прокси для api.telegram.org (Enter — без прокси)" no
+fi
 cat > "$APP_DIR/.env" <<ENV
 BOT_TOKEN=$TOKEN
 ADMIN_IDS=$ADMINS
+BOT_PROXY=$PROXY
 TZ=Europe/Moscow
 COLLEGE_NAME=Медколледж
 DIGEST_TIME=07:30

@@ -50,6 +50,7 @@ class Config:
     college_name: str = "Медколледж"
     group_regex: str = DEFAULT_GROUP_RE
     default_year: int = field(default_factory=lambda: date.today().year)
+    proxy: str = ""
     digest_time: str = "07:30"
     reminder_minutes: int = 0  # 0 = напоминания выключены
     data_dir: Path = PROJECT_DIR / "data"
@@ -84,6 +85,7 @@ class Config:
             college_name=get("COLLEGE_NAME", "Медколледж") or "Медколледж",
             group_regex=get("GROUP_REGEX", DEFAULT_GROUP_RE) or DEFAULT_GROUP_RE,
             default_year=year,
+            proxy=get("BOT_PROXY", "").strip(),
             digest_time=get("DIGEST_TIME", "07:30") or "07:30",
             reminder_minutes=int(get("REMINDER_MINUTES", "0") or 0),
             data_dir=(PROJECT_DIR / "data"),

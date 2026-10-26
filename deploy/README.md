@@ -87,6 +87,26 @@ cd /opt/schedule-bot && sudo git pull && sudo systemctl restart schedule-bot   #
 
 ---
 
+## Сервер в России: если Telegram «моргает»
+
+Из РФ-дата-центров `api.telegram.org` иногда троттлится: бот молчит, в логах пусто.
+Проверка на сервере:
+
+```bash
+curl -sS -m 10 -o /dev/null -w '%{http_code}\n' https://api.telegram.org   # ждём 404
+```
+
+Если таймаут — включите прокси (подойдёт любой HTTP/SOCKS5, например свой на зарубежном VPS):
+
+```bash
+sudo nano /opt/schedule-bot/.env
+# BOT_PROXY=socks5://user:pass@host:1080
+sudo systemctl restart schedule-bot
+journalctl -u schedule-bot -n 20     # должно быть «трафик к Telegram идёт через прокси»
+```
+
+Альтернатива — перенести сервер в Амстердам/Франкфурт: `api.telegram.org` там стабилен.
+
 ## Если что-то не так
 
 | Симптом | Причина | Что делать |
