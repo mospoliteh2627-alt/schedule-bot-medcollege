@@ -11,6 +11,15 @@ tar czf "$DEST/projects-$STAMP.tgz" \
 	--exclude='node_modules' --exclude='.venv' --exclude='__pycache__' --exclude='*.log' \
 	-C / opt/projects 2>/dev/null
 
+# проекты других людей: /home/<логин>/projects
+for home in /home/*/; do
+	user="$(basename "$home")"
+	[ -d "$home/projects" ] || continue
+	tar czf "$DEST/projects-$user-$STAMP.tgz" \
+		--exclude='node_modules' --exclude='.venv' --exclude='__pycache__' --exclude='*.log' \
+		-C "$home" projects 2>/dev/null
+done
+
 tar czf "$DEST/www-$STAMP.tgz" -C / var/www 2>/dev/null
 tar czf "$DEST/caddy-$STAMP.tgz" -C / etc/caddy 2>/dev/null
 

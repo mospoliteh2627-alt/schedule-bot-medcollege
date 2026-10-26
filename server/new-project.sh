@@ -2,7 +2,8 @@
 # Добавить ещё один проект на сервер: домен → 127.0.0.1:ПОРТ (+ systemd, если нужно).
 #
 #   sudo ./new-project.sh banking banking.guvanch.ru 8787
-#   sudo ./new-project.sh mysite mysite.guvanch.ru 3000 --systemd "/opt/projects/mysite/.venv/bin/python -m app.main"
+#   sudo ./new-project.sh mysite mysite.guvanch.ru 3000 --user anna \
+#        --systemd "/home/anna/projects/mysite/.venv/bin/python -m app.main"
 #
 # Скрипт идемпотентен: повторный запуск обновляет конфиг и перезапускает службу.
 set -euo pipefail
@@ -13,11 +14,25 @@ NAME="${1:-}"; DOMAIN="${2:-}"; PORT="${3:-}"
 shift 3 || true
 
 CMD=""
-if [ "${1:-}" = "--systemd" ]; then CMD="${2:-}"; fi
+RUN_USER=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--systemd) CMD="${2:-}"; shift 2 ;;
+		--user)    RUN_USER="${2:-}"; shift 2 ;;
+		*) shift ;;
+	esac
+done
 [ "$(id -u)" = "0" ] || { echo "Запустите через sudo."; exit 1; }
 
-PROJECT_DIR="/opt/projects/$NAME"
+RUN_USER="${RUN_USER:-${SUDO_USER:-root}}"
+[ "$RUN_USER" = "root" ] || id -u "$RUN_USER" >/dev/null 2>&1 || RUN_USER=root
+if [ "$RUN_USER" = "root" ]; then
+	PROJECT_DIR="/opt/projects/$NAME"
+else
+	PROJECT_DIR="/home/$RUN_USER/projects/$NAME"
+fi
 mkdir -p "$PROJECT_DIR" /etc/caddy/conf.d
+[ "$RUN_USER" = "root" ] || chown -R "$RUN_USER":"$RUN_USER" "$PROJECT_DIR"
 
 # --- Caddy: домен → локальный порт (WebSocket работает из коробки)
 cat > "/etc/caddy/conf.d/$NAME.caddy" <<CADDY
@@ -30,8 +45,6 @@ CADDY
 
 # --- systemd-служба (если передали команду запуска)
 if [ -n "$CMD" ]; then
-	RUN_USER="${SUDO_USER:-root}"
-	[ "$RUN_USER" = "root" ] || id -u "$RUN_USER" >/dev/null 2>&1 || RUN_USER=root
 	chown -R "$RUN_USER":"$RUN_USER" "$PROJECT_DIR"
 	cat > "/etc/systemd/system/$NAME.service" <<UNIT
 [Unit]
@@ -47,6 +60,9 @@ ExecStart=$CMD
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+# чтобы один проект не съел сервер у соседей
+MemoryMax=${MEMORY_MAX:-512M}
+CPUQuota=${CPU_QUOTA:-50%}
 
 [Install]
 WantedBy=multi-user.target
